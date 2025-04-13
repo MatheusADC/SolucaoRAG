@@ -9,3 +9,7 @@ os.environ["OPENAI_API_KEY"] = "your_openai_api_key"
 
 embeddings_model = OpenAIEmbeddings()
 llm = ChatOpenAI(model="gpt-3.5-turbo", max_tokens=200)
+
+pdf_link = "path_to_your_pdf.pdf"
+loader = PyPDFLoader(pdf_link, extract_images=False)
+pages = loader.load_and_split()
