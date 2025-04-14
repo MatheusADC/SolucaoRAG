@@ -30,3 +30,12 @@ vectordb = Chroma(persist_directory="text_index", embedding_function=embeddings_
 retiever = vectordb.as_retriever(search_kwargs={"k": 3})
 
 chain = load_qa_chain(llm, chain_type="stuff")
+
+def ask(question):
+    context = retiever.get_relevant_documents(question)
+    answer = (chain({"input_documents": context, "question": question}, return_only_outputs=True))['output_text']
+    return answer
+
+user_question = input("User: ")
+answer = ask(user_question)
+print("Answer:", answer)
