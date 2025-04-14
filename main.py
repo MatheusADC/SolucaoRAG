@@ -24,3 +24,5 @@ text_splitter = RecursiveCharacterTextSplitter(
 chunks = text_splitter.split_documents(pages
 db = Chroma.from_documents(chunks, embedding=embeddings_model, persist_directory="text_index")
 db.persist()
+                                       
+vectordb = Chroma(persist_directory="text_index", embedding_function=embeddings_model)
