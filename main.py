@@ -26,3 +26,5 @@ db = Chroma.from_documents(chunks, embedding=embeddings_model, persist_directory
 db.persist()
                                        
 vectordb = Chroma(persist_directory="text_index", embedding_function=embeddings_model)
+
+retiever = vectordb.as_retriever(search_kwargs={"k": 3})
