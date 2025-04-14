@@ -28,3 +28,5 @@ db.persist()
 vectordb = Chroma(persist_directory="text_index", embedding_function=embeddings_model)
 
 retiever = vectordb.as_retriever(search_kwargs={"k": 3})
+
+chain = load_qa_chain(llm, chain_type="stuff")
