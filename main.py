@@ -34,8 +34,9 @@ chain = load_qa_chain(llm, chain_type="stuff")
 def ask(question):
     context = retiever.get_relevant_documents(question)
     answer = (chain({"input_documents": context, "question": question}, return_only_outputs=True))['output_text']
-    return answer
+    return answer, context
 
 user_question = input("User: ")
 answer = ask(user_question)
 print("Answer:", answer)
+print(context[0])
