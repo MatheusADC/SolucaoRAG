@@ -1,42 +1,79 @@
+#!/usr/bin/env python
+# coding: utf-8
+
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.chat_models.openai import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from langchain_community.vectorstores import Chroma
 from langchain_community.document_loaders import PyPDFLoader
-from langchain.chains.question_answering.chain import load_qa_chain
+from langchain_core.prompts import PromptTemplate
+from langchain_core.runnables import RunnableSequence
+
 import os
-os.environ["OPENAI_API_KEY"] = "your_openai_api_key"
+import json
 
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+
+# Load dos modelos (Embeddings e LLM)
 embeddings_model = OpenAIEmbeddings()
-llm = ChatOpenAI(model="gpt-3.5-turbo", max_tokens=200)
-
-pdf_link = "path_to_your_pdf.pdf"
-loader = PyPDFLoader(pdf_link, extract_images=False)
-pages = loader.load_and_split()
-
-text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=4000,
-    chunk_overlap=20,
-    length_function=len,
-    add_start_index=True
+llm = ChatOpenAI(
+    model_name="gpt-3.5-turbo",
+    max_tokens=200,
+    
 )
 
-chunks = text_splitter.split_documents(pages
-db = Chroma.from_documents(chunks, embedding=embeddings_model, persist_directory="text_index")
-db.persist()
-                                       
-vectordb = Chroma(persist_directory="text_index", embedding_function=embeddings_model)
+def loadData():
+    # Carregar o PDF
+    pdf_link = "DOC-SF238339076816-20230503.pdf"
+    loader = PyPDFLoader(pdf_link, extract_images=False)
+    pages = loader.load_and_split()
 
-retiever = vectordb.as_retriever(search_kwargs={"k": 3})
+    # Separar em Chunks (Pedaços de documento)
+    text_spliter = RecursiveCharacterTextSplitter(
+        chunk_size=4000,
+        chunk_overlap=20,
+        length_function=len,
+        add_start_index=True,
+    )
 
-chain = load_qa_chain(llm, chain_type="stuff")
+    chunks = text_spliter.split_documents(pages)
+    vectordb = Chroma.from_documents(chunks, embedding=embeddings_model)
 
-def ask(question):
-    context = retiever.get_relevant_documents(question)
-    answer = (chain({"input_documents": context, "question": question}, return_only_outputs=True))['output_text']
-    return answer, context
+    # Load Retriever
+    retriever = vectordb.as_retriever(search_kwargs={"k": 3})
+    return retriever
 
-user_question = input("User: ")
-answer = ask(user_question)
-print("Answer:", answer)
-print(context[0])
+def getRelevantDocs(question):
+    retriever = loadData()
+    context = retriever.invoke(question)
+    return context
+
+def ask(question, llm):
+    TEMPLATE = """
+    Você é um especialista em legistalação e tecnologia. Responda a pergunta abaixo utilizando o contexto informado
+
+    Contexto: {context}
+    
+    Pergunta: {question}
+    """
+    prompt = PromptTemplate(input_variables=["context", "question"], template=TEMPLATE)
+    sequence = RunnableSequence(prompt | llm)
+    context = getRelevantDocs(question)
+    response = sequence.invoke({"context": context,"question": question})
+    return response
+
+def lambda_handler(event, context):
+    body = json.loads(event.get("body", {}))
+    query = body.get("question")
+    response = ask(query, llm).content
+
+    return {
+        "statusCode": 200,
+        "headers": {
+            "Content-Type": "application/json"
+        },
+        "body": json.dumps({
+            "message": "Tarefa Concluída com sucesso",
+            "details": response,
+        })
+    }
